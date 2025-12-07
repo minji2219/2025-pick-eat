@@ -1,7 +1,20 @@
 import LoadingSpinner from '@components/assets/LoadingSpinner';
 import Layout from '@components/layouts/Layout';
 
+import CreatePickeatWithLocation from '@pages/CreatePickeatWithLocation';
+import Login from '@pages/Login';
+import Main from '@pages/Main';
+import OauthCallback from '@pages/OauthCallback';
+import MatchResult from '@pages/pickeat/matchResult/MatchResult';
+import PickeatDetail from '@pages/pickeat/pickeatDetail/PickeatDetail';
+import PreferRestaurant from '@pages/pickeat/preferRestaurant/PreferRestaurant';
+import RestaurantExcludePage from '@pages/pickeat/restaurantExclude/RestaurantExcludePage';
+import ProfileInit from '@pages/ProfileInit';
+
 import { AuthProvider, useAuth } from '@domains/login/context/AuthProvider';
+
+import { pickeatQuery } from '@apis/pickeat';
+import { queryClient } from '@apis/queryClient';
 
 import { useGA } from '@hooks/useGA';
 
@@ -13,16 +26,7 @@ import { THEME } from '@styles/global';
 import reset from '@styles/reset';
 
 import { Global, ThemeProvider } from '@emotion/react';
-import CreatePickeatWithLocation from '@pages/CreatePickeatWithLocation';
-import Login from '@pages/Login';
-import Main from '@pages/Main';
-import OauthCallback from '@pages/OauthCallback';
-import { useRejoinRedirect } from '@pages/pickeat/hooks/useReEntry';
-import MatchResult from '@pages/pickeat/matchResult/MatchResult';
-import PickeatDetail from '@pages/pickeat/pickeatDetail/PickeatDetail';
-import PreferRestaurant from '@pages/pickeat/preferRestaurant/PreferRestaurant';
-import RestaurantExcludePage from '@pages/pickeat/restaurantExclude/RestaurantExcludePage';
-import ProfileInit from '@pages/ProfileInit';
+import { QueryClientProvider } from '@tanstack/react-query';
 import { lazy, Suspense } from 'react';
 import {
   createBrowserRouter,
@@ -32,9 +36,10 @@ import {
   useLocation,
   useSearchParams,
 } from 'react-router';
-const MyRoom = lazy(() => import('@pages/myRoom/MyRoom'));
-const CreateRoom = lazy(() => import('@pages/CreateRoom'));
-const RoomDetail = lazy(() => import('@pages/RoomDetail'));
+
+const MyPage = lazy(() => import('@pages/myRoom/MyPage'));
+const RoomDetail = lazy(() => import('@pages/roomDetail'));
+
 function Wrapper() {
   useGA().useRouteChangeTracker();
   return (
@@ -42,21 +47,26 @@ function Wrapper() {
       <Global styles={reset} />
       <ThemeProvider theme={THEME}>
         <Suspense fallback={<LoadingSpinner />}>
-          <AuthProvider>
-            <Layout>
-              <Outlet />
-            </Layout>
-          </AuthProvider>
+          <QueryClientProvider client={queryClient}>
+            <AuthProvider>
+              <Layout>
+                <Outlet />
+              </Layout>
+            </AuthProvider>
+          </QueryClientProvider>
         </Suspense>
       </ThemeProvider>
     </>
   );
 }
+
 function ProtectedLogin() {
   const { loggedIn, loading, hasToken, logoutUser } = useAuth();
   const location = useLocation();
   const showToast = useShowToast();
+
   if (loading) return null;
+
   if (!loggedIn || !hasToken()) {
     showToast({ mode: 'WARN', message: '로그인이 필요합니다.' });
     logoutUser();
@@ -64,24 +74,31 @@ function ProtectedLogin() {
       <Navigate to={ROUTE_PATH.LOGIN} state={{ from: location }} replace />
     );
   }
+
   return <Outlet />;
 }
+
 function GuestOnlyRoute() {
   const { loggedIn, loading } = useAuth();
   const location = useLocation();
+
   if (loading) return null;
+
   if (loggedIn) {
     return <Navigate to={ROUTE_PATH.MAIN} state={{ from: location }} replace />;
   }
+
   return <Outlet />;
 }
+
 function ProtectedPickeat() {
   const [searchParams] = useSearchParams();
   const pickeatCode = searchParams.get('code') ?? '';
-  const loading = useRejoinRedirect(pickeatCode);
-  if (loading) return null;
+  const { isLoading } = pickeatQuery.usePostRejoin(pickeatCode);
+  if (isLoading) return null;
   return <Outlet />;
 }
+
 const routes = createBrowserRouter([
   {
     Component: Wrapper,
@@ -90,8 +107,7 @@ const routes = createBrowserRouter([
       {
         Component: ProtectedLogin,
         children: [
-          { path: ROUTE_PATH.MY_PAGE, Component: MyRoom },
-          { path: ROUTE_PATH.CREATE_ROOM, Component: CreateRoom },
+          { path: ROUTE_PATH.MY_PAGE, Component: MyPage },
           { path: ROUTE_PATH.ROOM_DETAIL, Component: RoomDetail },
         ],
       },
@@ -122,7 +138,9 @@ const routes = createBrowserRouter([
     ],
   },
 ]);
+
 function Router() {
   return <RouterProvider router={routes} />;
 }
+
 export default Router;

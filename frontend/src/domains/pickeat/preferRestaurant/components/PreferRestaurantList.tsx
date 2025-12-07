@@ -1,62 +1,39 @@
 import PickeatEndModal from '@domains/pickeat/matchResult/components/PickeatEndModal';
 
-import { restaurant, Restaurant } from '@apis/restaurant';
+import LikeButton from '@components/actions/LikeButton/LikeButton';
+import RestaurantCard from '@components/RestaurantCard';
+
+import { Restaurant } from '@apis/restaurant';
+import { restaurantsQuery } from '@apis/restaurants';
 
 import { useFlip } from '@hooks/useFlip';
 
 import styled from '@emotion/styled';
-import { use } from 'react';
+import { useSearchParams } from 'react-router';
 
-import { useOptimisticLike } from '../hooks/useOptimisticLike';
-import usePreferRestaurant from '../hooks/usePreferRestaurant';
+function PreferRestaurantList() {
+  const [searchParams] = useSearchParams();
+  const pickeatCode = searchParams.get('code') ?? '';
 
-import PreferRestaurantItem from './PreferRestaurantItem';
-
-type Props = {
-  preferRestaurantListPromise: Promise<Restaurant[]>;
-};
-
-function PreferRestaurantList({ preferRestaurantListPromise }: Props) {
-  const initialData = use(preferRestaurantListPromise);
-  const {
-    isOptimisticLike,
-    syncOptimisticLikes,
-    addOptimisticLike,
-    removeOptimisticLike,
-  } = useOptimisticLike(initialData);
-  const { restaurantList, updateLikeCount } = usePreferRestaurant(
-    initialData,
-    syncOptimisticLikes
+  const { data: restaurantList } = restaurantsQuery.useSuspenseGet(
+    pickeatCode,
+    {
+      isExcluded: 'false',
+      pollingInterval: 3000,
+    }
   );
 
-  const { itemRefs } = useFlip(restaurantList);
+  const sortRestaurants = (restaurantList: Restaurant[]) => {
+    return restaurantList.sort((a, b) => {
+      if (b.likeCount !== a.likeCount) {
+        return b.likeCount - a.likeCount;
+      }
 
-  const handleLike = async (id: number) => {
-    addOptimisticLike(id);
-    updateLikeCount(id, +1);
-
-    try {
-      restaurant.patchLike(id);
-    } catch (error) {
-      removeOptimisticLike(id);
-      updateLikeCount(id, -1);
-
-      console.log('좋아요 실패:', error);
-    }
+      return a.name.localeCompare(b.name, 'ko');
+    });
   };
 
-  const handleUnlike = async (id: number) => {
-    removeOptimisticLike(id);
-    updateLikeCount(id, -1);
-
-    try {
-      restaurant.patchUnlike(id);
-    } catch (error) {
-      addOptimisticLike(id);
-      updateLikeCount(id, +1);
-      console.error('좋아요 취소 실패:', error);
-    }
-  };
+  const { itemRefs } = useFlip(sortRestaurants(restaurantList));
 
   return (
     <S.Container>
@@ -69,11 +46,12 @@ function PreferRestaurantList({ preferRestaurantListPromise }: Props) {
             if (el) itemRefs.current.set(restaurant.id, el);
           }}
         >
-          <PreferRestaurantItem
-            restaurant={restaurant}
-            liked={isOptimisticLike(restaurant.id)}
-            onLike={handleLike}
-            onUnlike={handleUnlike}
+          <RestaurantCard restaurantData={restaurant} />
+          <LikeButton
+            id={restaurant.id}
+            count={restaurant.likeCount}
+            liked={restaurant.isLiked}
+            name={restaurant.name}
           />
         </S.ItemWrapper>
       ))}
@@ -85,15 +63,18 @@ export default PreferRestaurantList;
 
 const S = {
   Container: styled.div`
-    display: grid;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     gap: ${({ theme }) => theme.GAP.level5};
-    place-items: center;
-    grid-template-columns: repeat(auto-fill, minmax(312px, 1fr));
-
-    padding: ${({ theme }) => theme.PADDING.p5};
   `,
 
   ItemWrapper: styled.div`
+    width: 350px;
+    display: flex;
+    justify-content: center;
+    position: relative;
     overflow-anchor: none;
   `,
 };

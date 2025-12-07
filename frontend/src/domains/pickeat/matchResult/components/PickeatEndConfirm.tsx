@@ -1,15 +1,11 @@
 import Button from '@components/actions/Button';
 
-import { pickeat } from '@apis/pickeat';
+import { pickeatQuery } from '@apis/pickeat';
 
 import { useGA } from '@hooks/useGA';
 
-import { generateRouterPath } from '@routes/routePath';
-
-import { useShowToast } from '@provider/ToastProvider';
-
 import styled from '@emotion/styled';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 
 import PickeatDecisionInfo from './PickeatDecisionInfo';
 
@@ -26,9 +22,7 @@ function PickeatEndConfirm({
 }: Props) {
   const [searchParams] = useSearchParams();
   const pickeatCode = searchParams.get('code') ?? '';
-
-  const navigate = useNavigate();
-  const showToast = useShowToast();
+  const { mutate: postResult } = pickeatQuery.usePostResult();
 
   const endPickeat = async () => {
     onConfirm();
@@ -38,29 +32,21 @@ function PickeatEndConfirm({
       label: '결과 페이지 이동 버튼',
       value: 1,
     });
-    try {
-      await pickeat.postResult(pickeatCode);
-      navigate(generateRouterPath.matchResult(pickeatCode));
-    } catch {
-      return showToast({
-        mode: 'ERROR',
-        message: '픽잇 결과를 가져오는 데 실패했습니다.',
-      });
-    }
+
+    postResult(pickeatCode);
   };
 
   return (
-    <S.Container>
-      <S.Title>
+    <S.Container role="dialog" aria-modal="true" aria-describedby="dialog-desc">
+      <S.Title id="dialog-title">잠깐✋</S.Title>
+      <S.Description aria-live="polite" id="dialog-desc">
         {remainingCount === 0 || (
           <>
-            <S.PointText>잠깐✋</S.PointText>
-            {remainingCount}명이 투표를 완료하지 않았어요!
-            <br />
+            {remainingCount}명이 투표를 완료하지 않았어요! <br />
           </>
         )}
         정말 종료하시겠습니까?
-      </S.Title>
+      </S.Description>
 
       <PickeatDecisionInfo />
       <S.Wrapper>
@@ -81,13 +67,12 @@ const S = {
     align-items: center;
     gap: ${({ theme }) => theme.GAP.level5};
   `,
-  Title: styled.p`
-    font: ${({ theme }) => theme.FONTS.heading.medium};
+  Description: styled.span`
+    font: ${({ theme }) => theme.FONTS.body.xlarge};
     text-align: center;
   `,
-  PointText: styled.p`
-    color: ${({ theme }) => theme.PALETTE.gray[60]};
-    font: ${({ theme }) => theme.FONTS.heading.large_style};
+  Title: styled.p`
+    font: ${({ theme }) => theme.FONTS.heading.large};
   `,
   Wrapper: styled.div`
     width: 100%;

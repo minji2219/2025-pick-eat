@@ -1,13 +1,12 @@
 import Cross from '@components/assets/icons/Cross';
 
-import { setMobileStyle } from '@styles/mediaQuery';
+import { THEME } from '@styles/global';
 
-import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { ReactNode, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 
-export type ModalType = {
+export type Props = {
   opened: boolean;
   mounted: boolean;
   onClose: () => void;
@@ -25,7 +24,7 @@ function Modal({
   size = 'md',
   closeButton = true,
   onUnmount,
-}: ModalType) {
+}: Props) {
   useEffect(() => {
     if (!opened) return;
 
@@ -50,10 +49,14 @@ function Modal({
   return ReactDOM.createPortal(
     <>
       <S.BackDrop opened={opened} onClick={onClose} />
-      <S.Container opened={opened} size={size}>
+      <S.Container
+        opened={opened}
+        size={size}
+        onClick={e => e.stopPropagation()}
+      >
         {closeButton && (
           <S.IconWrapper onClick={onUnmount}>
-            <Cross color="white" size="sm" strokeWidth={4} />
+            <Cross color={THEME.PALETTE.gray[0]} size="sm" strokeWidth={4} />
           </S.IconWrapper>
         )}
         {children}
@@ -94,30 +97,25 @@ const S = {
   `,
 
   Container: styled.div<{ size: 'sm' | 'md' | 'lg'; opened: boolean }>`
-    width: ${({ size }) =>
-      size === 'sm' ? '500px' : size === 'md' ? '600px' : '700px'};
+    ${({ theme }) => theme.POSITION.fixedCenter};
+    width: 90%;
+    max-width: 440px;
 
-    position: fixed;
     top: 50%;
-    left: 50%;
     z-index: ${({ theme }) => theme.Z_INDEX.modal};
 
     padding: ${({ theme }) => theme.PADDING.p5};
 
     background-color: white;
 
-    border-radius: ${({ theme }) => theme.RADIUS.medium3};
+    border-radius: ${({ theme }) => theme.RADIUS.medium};
     opacity: ${({ opened }) => (opened ? 1 : 0)};
     pointer-events: ${({ opened }) => (opened ? 'auto' : 'none')};
 
     transform: translate(-50%, -50%);
-
-    ${setMobileStyle(css`
-      width: 90%;
-    `)}
   `,
 
-  IconWrapper: styled.div`
+  IconWrapper: styled.button`
     width: 30px;
     height: 30px;
 

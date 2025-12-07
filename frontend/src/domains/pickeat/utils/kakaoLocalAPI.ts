@@ -88,7 +88,6 @@ export const getAddressByLatLng = async (
     const address = data.documents[0].address;
     return address?.address_name ?? null;
   } else {
-    console.log('주소 없음');
     return null;
   }
 };
@@ -119,7 +118,7 @@ function parseCategory(categoryFullPath: string): FoodCategory {
   const parts = categoryFullPath.split(' > ').map(part => part.trim());
 
   for (const part of parts) {
-    if (FOOD_CATEGORIES.includes(part)) {
+    if (FOOD_CATEGORIES.includes(part as FoodCategory)) {
       return part as FoodCategory;
     }
   }

@@ -1,32 +1,40 @@
+import { restaurantQuery } from '@apis/restaurant';
+
 import styled from '@emotion/styled';
+import { useSearchParams } from 'react-router';
 
 import { useExplosion } from './hooks/useExplosion';
 
 type Props = {
   id: number;
   count: number;
-  onLike: (id: number) => void;
-  onUnlike: (id: number) => void;
   liked: boolean;
+  name: string;
 };
 
-function LikeButton({ id, count, onLike, onUnlike, liked }: Props) {
+function LikeButton({ id, count, liked, name }: Props) {
+  const [searchParams] = useSearchParams();
+  const pickeatCode = searchParams.get('code') ?? '';
+
+  const { mutate: mutateLike } = restaurantQuery.usePatchLike(pickeatCode);
+  const { mutate: mutateUnlike } = restaurantQuery.usePatchUnlike(pickeatCode);
+
   const { explosionRef, trigger, removeAnimation } = useExplosion();
 
   const handleClick = () => {
     removeAnimation();
     if (liked) {
-      onUnlike(id);
+      mutateUnlike(id);
     } else {
       trigger();
-      onLike(id);
+      mutateLike(id);
     }
   };
 
   return (
-    <S.Container>
+    <S.Container aria-label={`${name} 좋아요`} onClick={handleClick}>
       <S.HeartWrapper>
-        <S.Heart onClick={handleClick}>{liked ? '❤️' : '♡'}</S.Heart>
+        <S.Heart>{liked ? '❤️' : '♡'}</S.Heart>
         <S.Explosion ref={explosionRef}>
           {Array.from({ length: 5 }).map((_, i) => (
             <S.SmallHeart key={i} />
@@ -41,14 +49,23 @@ function LikeButton({ id, count, onLike, onUnlike, liked }: Props) {
 export default LikeButton;
 
 const S = {
-  Container: styled.div`
-    width: 36px;
+  Container: styled.button`
+    width: 66px;
+    height: 36px;
     display: flex;
-    flex-shrink: 0;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
 
-    gap: ${({ theme }) => theme.GAP.level2};
+    gap: ${({ theme }) => theme.GAP.level3};
+    position: absolute;
+    right: 10px;
+    bottom: 10px;
+
+    padding: ${({ theme }) => theme.PADDING.p1}
+      ${({ theme }) => theme.PADDING.p4};
+
+    background-color: ${({ theme }) => theme.PALETTE.gray[5]};
+    border-radius: ${({ theme }) => theme.RADIUS.large};
   `,
 
   HeartWrapper: styled.div`
@@ -57,13 +74,15 @@ const S = {
   `,
 
   Heart: styled.p`
-    font: ${({ theme }) => theme.FONTS.body.large};
+    color: ${({ theme }) => theme.PALETTE.gray[50]};
+    font: ${({ theme }) => theme.FONTS.body.xlarge};
     cursor: pointer;
     user-select: none;
   `,
 
   Count: styled.p`
-    font: ${({ theme }) => theme.FONTS.body.large};
+    color: ${({ theme }) => theme.PALETTE.gray[50]};
+    font: ${({ theme }) => theme.FONTS.body.medium};
   `,
 
   Explosion: styled.div`
@@ -78,7 +97,7 @@ const S = {
     height: 8px;
     position: absolute;
 
-    background: red;
+    background: ${({ theme }) => theme.PALETTE.red[40]};
 
     animation: none;
     border-radius: ${({ theme }) => theme.RADIUS.half}
@@ -92,7 +111,7 @@ const S = {
       height: 8px;
       position: absolute;
 
-      background: red;
+      background: ${({ theme }) => theme.PALETTE.red[40]};
       border-radius: ${({ theme }) => theme.RADIUS.half};
       content: '';
     }

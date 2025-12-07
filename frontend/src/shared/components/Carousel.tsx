@@ -1,28 +1,43 @@
+import { THEME } from '@styles/global';
+
 import styled from '@emotion/styled';
 import { ReactNode, useEffect, useRef, useState } from 'react';
 
+import VisuallyHidden from './accessibility/VisuallyHidden';
 import Arrow from './assets/icons/Arrow';
 
 type Props = {
-  contentArr: ReactNode[];
+  contentArr: { title: string; content: ReactNode }[];
   interval?: number;
+  showArrows?: boolean;
+  indicator?: boolean;
 };
 
-function Carousel({ contentArr, interval = 3000 }: Props) {
+function Carousel({
+  contentArr,
+  interval = 0,
+  showArrows = false,
+  indicator = true,
+}: Props) {
   const [focusedIdx, setFocusedIdx] = useState(0);
+
   const focusedFirstIdx = focusedIdx === 0;
   const focusedLastIdx = focusedIdx === contentArr.length - 1;
   const isFocused = (idx: number) => focusedIdx === idx;
   const containerRef = useRef<HTMLDivElement>(null);
+  const [liveMessage, setLiveMessage] = useState(contentArr[0].title);
 
   const scrollToIndex = (index: number) => {
     const container = containerRef.current;
     if (!container) return;
-    const item = container.children[index] as HTMLElement;
-    item.scrollIntoView({
-      behavior: 'smooth',
-      block: 'nearest',
-      inline: 'center',
+
+    requestAnimationFrame(() => {
+      const item = container.children[index] as HTMLElement;
+      item?.scrollIntoView({
+        behavior: 'smooth',
+        block: 'nearest',
+        inline: 'center',
+      });
     });
   };
 
@@ -35,26 +50,60 @@ function Carousel({ contentArr, interval = 3000 }: Props) {
     if (isFocused(idx)) {
       return;
     }
-    e.stopPropagation();
+
     e.preventDefault();
+    e.stopPropagation();
     changeFocus(idx);
   };
 
-  useEffect(() => {
-    scrollToIndex(0);
-  }, []);
+  const getAriaLabel = (i: number, title: string) => {
+    if (focusedIdx - 1 === i) return '이전';
+    if (focusedIdx + 1 === i) return '다음';
+    return title;
+  };
 
   useEffect(() => {
-    const intervalId = setInterval(() => {
+    if (interval === 0) return;
+    const id = setInterval(() => {
       setFocusedIdx(prev => {
         const next = prev === contentArr.length - 1 ? 0 : prev + 1;
         scrollToIndex(next);
         return next;
       });
     }, interval);
+    return () => clearInterval(id);
+  }, [interval, contentArr.length]);
 
-    return () => clearInterval(intervalId);
-  });
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const onScroll = () => {
+      const { left, width } = container.getBoundingClientRect();
+      const centerX = left + width / 2;
+      let minDistanceItem = 0;
+      let minDistance = Infinity;
+      Array.from(container.children).forEach((child, i) => {
+        const rect = (child as HTMLElement).getBoundingClientRect();
+        const dist = Math.abs(rect.left + rect.width / 2 - centerX);
+        if (dist < minDistance) {
+          minDistance = dist;
+          minDistanceItem = i;
+        }
+      });
+      setFocusedIdx(minDistanceItem);
+    };
+    container.addEventListener('scroll', onScroll, { passive: true });
+    return () => container.removeEventListener('scroll', onScroll);
+  }, [contentArr.length]);
+
+  useEffect(() => {
+    const id = setTimeout(() => {
+      setLiveMessage(
+        `${contentArr[focusedIdx].title}. ${contentArr.length}가지 중 ${focusedIdx + 1}번째 `
+      );
+    }, 200);
+    return () => clearTimeout(id);
+  }, [focusedIdx, contentArr]);
 
   return (
     <S.Container>
@@ -63,30 +112,43 @@ function Carousel({ contentArr, interval = 3000 }: Props) {
           <S.Content
             key={i}
             focused={isFocused(i)}
-            atFirstContent={i === 0}
-            atLastContent={i === contentArr.length - 1}
-            onClickCapture={e => {
-              handleContentClick(e, i);
-            }}
+            onClickCapture={e => handleContentClick(e, i)}
+            aria-label={getAriaLabel(i, content.title)}
+            role="button"
           >
-            {content}
+            {content.content}
           </S.Content>
         ))}
       </S.ContentWrapper>
 
-      <S.LeftArrowButton
-        onClick={() => changeFocus(focusedIdx - 1)}
-        active={!focusedFirstIdx}
-      >
-        <Arrow size="sm" direction="left" color="white" />
-      </S.LeftArrowButton>
+      <VisuallyHidden aria-live="polite">{liveMessage}</VisuallyHidden>
 
-      <S.RightArrowButton
-        onClick={() => changeFocus(focusedIdx + 1)}
-        active={!focusedLastIdx}
-      >
-        <Arrow size="sm" direction="right" color="white" />
-      </S.RightArrowButton>
+      {showArrows && (
+        <>
+          <S.LeftArrowButton
+            onClick={() => changeFocus(focusedIdx - 1)}
+            active={!focusedFirstIdx}
+            aria-label="이전"
+          >
+            <Arrow size="sm" direction="left" color={THEME.PALETTE.gray[0]} />
+          </S.LeftArrowButton>
+
+          <S.RightArrowButton
+            onClick={() => changeFocus(focusedIdx + 1)}
+            active={!focusedLastIdx}
+            aria-label="다음"
+          >
+            <Arrow size="sm" direction="right" color={THEME.PALETTE.gray[0]} />
+          </S.RightArrowButton>
+        </>
+      )}
+      {indicator && (
+        <S.Indicator>
+          {Array.from({ length: contentArr.length }).map((_, i) => (
+            <S.Dot key={i} active={i === focusedIdx} />
+          ))}
+        </S.Indicator>
+      )}
     </S.Container>
   );
 }
@@ -108,7 +170,7 @@ const ArrowButton = styled.button<{ active: boolean }>`
   border-radius: ${({ theme }) => theme.RADIUS.half};
 
   opacity: ${({ active }) => (active ? '1' : '0')};
-  pointer-events: ${({ active }) => !active && 'none'};
+  pointer-events: ${({ active }) => (!active ? 'none' : 'auto')};
 
   &:hover {
     background-color: ${({ theme }) => theme.PALETTE.primary[30]};
@@ -122,44 +184,67 @@ const ArrowButton = styled.button<{ active: boolean }>`
 const S = {
   Container: styled.div`
     width: 100%;
-    display: flex;
-    align-items: center;
     position: relative;
   `,
 
   ContentWrapper: styled.div`
-    min-width: 100%;
+    width: 100%;
     display: flex;
-    align-items: center;
-    overflow: hidden;
-    position: relative;
+
+    padding: 0 50%;
+
+    overflow-x: auto;
     scroll-behavior: smooth;
+
+    scroll-snap-type: x mandatory;
+
+    scrollbar-width: none;
+
+    &::-webkit-scrollbar {
+      display: none;
+    }
   `,
 
   LeftArrowButton: styled(ArrowButton)`
-    left: 10px;
+    top: 50%;
+    left: 20px;
+    transform: translateY(-50%);
   `,
 
   RightArrowButton: styled(ArrowButton)`
-    right: 10px;
+    top: 50%;
+    right: 20px;
+    transform: translateY(-50%);
   `,
 
-  Content: styled.div<{
-    focused: boolean;
-    atFirstContent: boolean;
-    atLastContent: boolean;
-  }>`
-    display: flex;
-    justify-content: center;
-
-    margin-right: ${({ atLastContent }) => atLastContent && '100%'};
-    margin-left: ${({ atFirstContent }) => atFirstContent && '100%'};
-
+  Content: styled.div<{ focused: boolean }>`
     transition:
       transform 0.3s ease,
       opacity 0.3s ease;
     opacity: ${({ focused }) => (focused ? 1 : 0.6)};
+    scroll-snap-align: center;
+    scroll-snap-stop: always;
+    transform: ${({ focused }) => (focused ? 'scale(1)' : 'scale(0.85)')};
 
-    transform: ${({ focused }) => (focused ? 'scale(1)' : 'scale(0.6)')};
+    will-change: transform, opacity;
+  `,
+
+  Indicator: styled.div`
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+
+    margin: 27px 0 0;
+  `,
+
+  Dot: styled.div<{ active: boolean }>`
+    width: 8px;
+    height: 8px;
+
+    background: ${({ active, theme }) =>
+      active ? theme.PALETTE.gray[90] : theme.PALETTE.gray[30]};
+
+    transition: background 0.2s;
+    border-radius: 50%;
   `,
 };

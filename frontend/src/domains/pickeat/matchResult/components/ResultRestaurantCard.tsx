@@ -1,0 +1,134 @@
+import VisuallyHiddenWithFocus from '@components/accessibility/VisuallyHiddenWithFocus';
+import Share from '@components/assets/icons/Share';
+import Chip from '@components/labels/Chip';
+
+import { pickeatQuery } from '@apis/pickeat';
+
+import useCopyLink from '@hooks/useCopyLinkt';
+
+import { THEME } from '@styles/global';
+
+import styled from '@emotion/styled';
+import { useSearchParams } from 'react-router';
+
+function ResultRestaurantCard() {
+  const [searchParams] = useSearchParams();
+  const pickeatCode = searchParams.get('code') ?? '';
+  const copyLink = useCopyLink();
+
+  const { data: restaurantData } =
+    pickeatQuery.useSuspenseGetResult(pickeatCode);
+  const { name, pictureUrls, placeUrl, tags } = restaurantData;
+
+  return (
+    <S.Container>
+      <VisuallyHiddenWithFocus>
+        {restaurantData.name}가 식당으로 선정됐습니다.
+      </VisuallyHiddenWithFocus>
+      <S.ImageBox>
+        <S.Image
+          src={pictureUrls[0] || './images/restaurant.png'}
+          alt={name}
+          onError={e => {
+            e.currentTarget.onerror = null;
+            e.currentTarget.src = './images/restaurant.png';
+          }}
+        />
+      </S.ImageBox>
+      <S.BottomWrapper>
+        <S.TitleBox>
+          {tags.length > 0 && (
+            <Chip key={tags[0]} variant="outlined" size="sm">
+              {tags[0]}
+            </Chip>
+          )}
+          <S.Name>{name}</S.Name>
+        </S.TitleBox>
+        <S.ButtonBox>
+          {placeUrl && (
+            <S.LinkButton
+              onClick={() =>
+                placeUrl &&
+                window.open(placeUrl, '_blank', 'noopener,noreferrer')
+              }
+            >
+              식당 상세 정보
+            </S.LinkButton>
+          )}
+          <S.ShareBox onClick={() => copyLink(window.location.href)}>
+            <Share color={THEME.PALETTE.gray[70]} size="sm" />
+          </S.ShareBox>
+        </S.ButtonBox>
+      </S.BottomWrapper>
+    </S.Container>
+  );
+}
+
+export default ResultRestaurantCard;
+
+const S = {
+  Container: styled.div`
+    width: 270px;
+    height: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: ${({ theme }) => theme.GAP.level4};
+    overflow: hidden;
+
+    background-color: ${({ theme }) => theme.PALETTE.gray[0]};
+    border-radius: ${({ theme }) => theme.RADIUS.large};
+    box-shadow: ${({ theme }) => theme.BOX_SHADOW.level1};
+  `,
+  BottomWrapper: styled.div`
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.GAP.level4};
+
+    padding: 0 ${({ theme }) => theme.PADDING.p5}
+      ${({ theme }) => theme.PADDING.p8};
+  `,
+  TitleBox: styled.div`
+    display: flex;
+    flex-direction: column;
+    gap: ${({ theme }) => theme.GAP.level2};
+  `,
+  ButtonBox: styled.div`
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: ${({ theme }) => theme.GAP.level4};
+  `,
+  LinkButton: styled.a`
+    color: ${({ theme }) => theme.PALETTE.gray[50]};
+    font: ${({ theme }) => theme.FONTS.body.medium};
+    text-decoration: underline;
+    cursor: pointer;
+  `,
+  ShareBox: styled.button`
+    width: 30px;
+    height: 30px;
+  `,
+  Name: styled.p`
+    overflow: hidden;
+
+    color: ${({ theme }) => theme.PALETTE.gray[95]};
+    font: ${({ theme }) => theme.FONTS.heading.medium};
+
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  `,
+  ImageBox: styled.div`
+    width: 100%;
+    height: 180px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+  `,
+  Image: styled.img`
+    width: 100%;
+  `,
+};

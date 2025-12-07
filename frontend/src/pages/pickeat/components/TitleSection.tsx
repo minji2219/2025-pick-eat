@@ -6,9 +6,7 @@ import SharePanel from '@components/share/SharePanel';
 import ParticipantsAvatarGroup from '@domains/pickeat/participants/participantsAvatarGroup/ParticipantsAvatarGroup';
 
 import { THEME } from '@styles/global';
-import { setMobileStyle } from '@styles/mediaQuery';
 
-import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 import { useSearchParams } from 'react-router';
 
@@ -32,7 +30,7 @@ function TitleSection({ children }: Props) {
     <S.Container>
       {children}
       <S.ToolContainer>
-        <S.ShareContainer onClick={handleOpenModal}>
+        <S.ShareContainer onClick={handleOpenModal} aria-label="공유하기">
           <Share color={THEME.PALETTE.gray[70]} size="sm" />
           <Modal
             opened={opened}
@@ -41,6 +39,7 @@ function TitleSection({ children }: Props) {
             onUnmount={handleUnmountModal}
           >
             <SharePanel
+              title="공유하기"
               url={pickeatLink}
               description="함께 픽잇하고 싶은 친구에게 공유해보세요!"
             />
@@ -57,67 +56,21 @@ export default TitleSection;
 const S = {
   Container: styled.div`
     width: 100%;
-    height: 200px;
 
     display: flex;
-    justify-content: space-between;
-    align-items: center;
 
-    padding: 0 ${({ theme }) => theme.PADDING.px7};
-
-    background-color: ${({ theme }) => theme.PALETTE.gray[0]};
-
-    ${setMobileStyle(css`
-      height: 210px;
-      flex-direction: column;
-      justify-content: space-between;
-      align-items: flex-start;
-
-      padding-bottom: 16px;
-    `)}
-  `,
-  DeleteButton: styled.div`
-    width: 20px;
-    height: 20px;
-
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    color: ${({ theme }) => theme.PALETTE.gray[0]};
-  `,
-  IconContainer: styled.div`
-    display: flex;
     flex-direction: column;
-    justify-content: center;
-    align-items: flex-end;
-  `,
-  IconWrapper: styled.div`
-    width: 24px;
-    height: 24px;
 
-    display: flex;
-    justify-content: center;
-    align-items: center;
-
-    padding: ${({ theme }) => theme.PADDING.p1};
-
-    background-color: ${({ theme }) => theme.PALETTE.primary[50]};
-
-    border-radius: 1000px;
+    padding: ${({ theme }) => theme.PADDING.p5};
   `,
   ShareContainer: styled.button`
     height: 36px;
   `,
   ToolContainer: styled.div`
+    width: 100%;
     display: flex;
-    flex-direction: column;
-    justify-content: space-between;
+    flex-direction: row-reverse;
     align-items: flex-end;
     gap: ${({ theme }) => theme.GAP.level4};
-    ${setMobileStyle(css`
-      width: 100%;
-      flex-direction: row-reverse;
-    `)}
   `,
 };

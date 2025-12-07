@@ -1,30 +1,26 @@
-import Result from '@domains/pickeat/matchResult/components/Result';
+import ResultContent from '@domains/pickeat/matchResult/components/ResultContent';
 
-import LoadingSpinner from '@components/assets/LoadingSpinner';
-import Confetti from '@components/Confetti';
-import { HEADER_HEIGHT } from '@components/layouts/Header';
+import VisuallyHiddenWithFocus from '@components/accessibility/VisuallyHiddenWithFocus';
 
-import { setMobileStyle } from '@styles/mediaQuery';
+import ErrorBoundary from '@domains/errorBoundary/ErrorBoundary';
 
-import { css } from '@emotion/react';
+import { usePreventGoBack } from '@hooks/usePreventGoBack';
+
 import styled from '@emotion/styled';
-import { useSearchParams } from 'react-router';
+import { Suspense } from 'react';
+
+import PendingResultScreen from './components/PendingResultScreen';
 
 function MatchResult() {
-  const [searchParams] = useSearchParams();
-  const pickeatCode = searchParams.get('code') ?? '';
-
+  usePreventGoBack('결과보기 페이지에서는 이전 단계로 이동할 수 없습니다.');
   return (
     <S.Container>
-      <S.ResultWrapper>
-        <Confetti />
-        <S.Title>👏 오늘의 Pick! 👏</S.Title>
-        {pickeatCode ? (
-          <Result pickeatCode={pickeatCode} />
-        ) : (
-          <LoadingSpinner />
-        )}
-      </S.ResultWrapper>
+      <VisuallyHiddenWithFocus>결과보기 페이지 입니다.</VisuallyHiddenWithFocus>
+      <ErrorBoundary>
+        <Suspense fallback={<PendingResultScreen />}>
+          <ResultContent />
+        </Suspense>
+      </ErrorBoundary>
     </S.Container>
   );
 }
@@ -33,41 +29,12 @@ export default MatchResult;
 
 const S = {
   Container: styled.div`
-    height: calc(100vh - ${HEADER_HEIGHT});
+    height: 100vh;
     display: flex;
     flex-direction: column;
     justify-content: center;
     align-items: center;
-  `,
 
-  ResultWrapper: styled.div`
-    width: 60%;
-
-    height: 400px;
-
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-    align-items: center;
-    gap: ${({ theme }) => theme.GAP.level2};
-    position: relative;
-
-    padding: ${({ theme }) => theme.PADDING.p10};
-
-    background-color: ${({ theme }) => theme.PALETTE.gray[0]};
-
-    border-radius: ${({ theme }) => theme.RADIUS.xlarge};
-
-    box-shadow: ${({ theme }) => theme.BOX_SHADOW.level3};
-
-    ${setMobileStyle(css`
-      width: 100%;
-      box-shadow: none;
-    `)}
-  `,
-
-  Title: styled.p`
-    color: ${({ theme }) => theme.PALETTE.gray[60]};
-    font: ${({ theme }) => theme.FONTS.heading.large};
+    background-color: ${({ theme }) => theme.PALETTE.gray[5]};
   `,
 };

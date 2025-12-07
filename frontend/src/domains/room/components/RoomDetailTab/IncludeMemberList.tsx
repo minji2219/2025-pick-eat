@@ -1,27 +1,22 @@
-import Button from '@components/actions/Button';
-import People from '@components/assets/icons/People';
+import NewButton from '@components/actions/NewButton';
+import Chip from '@components/labels/Chip';
 import Modal from '@components/modal/Modal';
 import { useModal } from '@components/modal/useModal';
 
 import { useInviteMember } from '@domains/room/hooks/useInviteMember';
 
-import { room } from '@apis/room';
-import { User } from '@apis/users';
-
-import { useShowToast } from '@provider/ToastProvider';
+import { roomQuery } from '@apis/room';
 
 import styled from '@emotion/styled';
-import { use } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
+import { useSearchParams } from 'react-router';
 
+import ContentTitle from './components/ContentTitle';
 import InviteMember from './InviteMember';
 
-function IncludeMemberList({ members }: { members: Promise<User[]> }) {
-  const memberList = use(members);
+function IncludeMemberList() {
   const [searchParams] = useSearchParams();
   const roomId = Number(searchParams.get('roomId')) ?? '';
-  const navigate = useNavigate();
-  const showToast = useShowToast();
+  const { data } = roomQuery.useGetIncludeMembers(roomId);
 
   const {
     opened,
@@ -34,60 +29,58 @@ function IncludeMemberList({ members }: { members: Promise<User[]> }) {
     selectedMemberList,
     handleAddSelectedMember,
     handleDeleteSelectedMember,
+    handleClearSelectedMember,
   } = useInviteMember();
 
-  const inviteMember = async () => {
-    try {
-      await room.postMember(
-        roomId,
-        selectedMemberList.map(member => member.id)
-      );
-      showToast({ mode: 'SUCCESS', message: '초대 완료!' });
-      navigate(0);
-    } catch {
-      showToast({
-        mode: 'ERROR',
-        message: '초대에 실패했습니다. 다시 시도해 주세요.',
-      });
-    }
+  const { mutate } = roomQuery.usePostMember(roomId);
+
+  const handleInvite = () => {
+    mutate({ userIds: selectedMemberList.map(member => member.id) });
+    handleUnmountModal();
+    handleClearSelectedMember();
   };
 
   return (
-    <S.Container>
-      <S.TitleArea>
-        <S.Description>
-          <People size="sm" />
-          멤버({memberList.length})
-        </S.Description>
-        <Button
-          text="초대"
-          size="sm"
-          color="secondary"
-          onClick={handleOpenModal}
-        />
-        <Modal
-          mounted={mounted}
-          opened={opened}
-          onClose={handleCloseModal}
-          onUnmount={handleUnmountModal}
-          size="lg"
-        >
-          <S.ModalContent>
-            <InviteMember
-              selectedMemberList={selectedMemberList}
-              onAddMember={handleAddSelectedMember}
-              onDeleteMember={handleDeleteSelectedMember}
-            />
-            <Button text="초대하기" onClick={inviteMember} />
-          </S.ModalContent>
-        </Modal>
-      </S.TitleArea>
+    <>
+      <ContentTitle
+        title={`멤버(${data.length})`}
+        description="함께할 멤버를 초대해보세요!"
+      />
+
+      <Modal
+        mounted={mounted}
+        opened={opened}
+        onClose={handleCloseModal}
+        onUnmount={handleUnmountModal}
+        size="lg"
+      >
+        <S.ModalContent>
+          <InviteMember
+            selectedMemberList={selectedMemberList}
+            onAddMember={handleAddSelectedMember}
+            onDeleteMember={handleDeleteSelectedMember}
+          />
+          <NewButton
+            onClick={handleInvite}
+            disabled={selectedMemberList.length === 0}
+          >
+            초대하기
+          </NewButton>
+        </S.ModalContent>
+      </Modal>
       <S.List>
-        {memberList.map(member => (
-          <S.Member key={member.id}>{member.nickname}</S.Member>
+        {data.map(member => (
+          <S.Member key={member.id}>
+            <Chip size="lg">{member.nickname}</Chip>
+          </S.Member>
         ))}
+        <S.MemberAddButton onClick={handleOpenModal}>
+          <Chip size="lg" color="primary">
+            <S.ButtonText>+</S.ButtonText>
+          </Chip>
+        </S.MemberAddButton>
       </S.List>
-    </S.Container>
+    </>
   );
 }
 export default IncludeMemberList;
@@ -101,18 +94,14 @@ const S = {
     flex-direction: column;
     gap: ${({ theme }) => theme.GAP.level5};
 
-    padding: ${({ theme }) => theme.PADDING.p5};
-
     background-color: ${({ theme }) => theme.PALETTE.gray[5]};
     border-radius: ${({ theme }) => theme.RADIUS.large};
   `,
-
   TitleArea: styled.div`
     display: flex;
     justify-content: space-between;
     align-items: center;
   `,
-
   Description: styled.span`
     display: flex;
     align-items: center;
@@ -120,19 +109,22 @@ const S = {
 
     font: ${({ theme }) => theme.FONTS.heading.small};
   `,
-
   ModalContent: styled.div`
+    height: 300px;
     display: flex;
     flex-direction: column;
     gap: ${({ theme }) => theme.GAP.level4};
   `,
-
   List: styled.ul`
-    overflow: scroll;
-    scrollbar-width: none;
+    display: flex;
+    flex-wrap: wrap;
+    gap: ${({ theme }) => theme.GAP.level3};
   `,
+  Member: styled.li``,
+  MemberAddButton: styled.button``,
+  ButtonText: styled.span`
+    padding: 0 ${({ theme }) => theme.PADDING.p4};
 
-  Member: styled.li`
-    padding: ${({ theme }) => theme.PADDING.p3};
+    font: ${({ theme }) => theme.FONTS.body.xsmall_bold};
   `,
 };
